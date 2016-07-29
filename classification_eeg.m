@@ -96,8 +96,10 @@ for stepIdx = 1:nStep
 end
 
 % cross-validation (nShift x nFold-fold cross-validation)
-nShift = 5; % number of repeatition
-nFold = 5;  % number of subset
+% for more convenient use, please refer to 'https://github.com/bbci/bbci_public/blob/master/demos/demo_validation_csp.m'
+% cross-validation below was written for meta-classification for EEG-NIRS hybrid BCI
+nShift = 5; % number of repeatitions
+nFold = 5;  % number of subsets
 group.imag = epo.imag.y;
 group.ment = epo.ment.y;
 
