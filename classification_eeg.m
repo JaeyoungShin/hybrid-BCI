@@ -10,7 +10,7 @@ BTB.History = 0; % to aviod error for merging cnt
 
 % parameters
 subdir_list = {'VP001'}; % subject
-basename_list = {'motor_imagery1','mental_arithmetic1',''motor_imagery2','mental_arithmetic1',''motor_imagery3','mental_arithmetic1'}; % task type: motor imagery / recording session: 1 - 3
+basename_list = {'motor_imagery1','mental_arithmetic1','motor_imagery2','mental_arithmetic1','motor_imagery3','mental_arithmetic1'}; % task type: motor imagery / recording session: 1 - 3
 stimDef.eeg = {16,32; 'condition1','condition2'};
 
 % load occular artifact-free eeg data
