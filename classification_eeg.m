@@ -43,9 +43,8 @@ ival_epo  = [-10 25]*1000; % epoch range (unit: msec)
 ival_base = [-3 0]*1000; % baseline correction range (unit: msec)
 
 epo.imag = proc_segmentation(cnt.imag, mrk.imag, ival_epo);
-epo.ment = proc_segmentation(cnt.ment, mrk.ment, ival_epo);
-
 epo.imag = proc_baseline(epo.imag,ival_base);
+epo.ment = proc_segmentation(cnt.ment, mrk.ment, ival_epo);
 epo.ment = proc_baseline(epo.ment,ival_base);
 
 % frequency band selection for common spatial pattern (CSP)
@@ -56,8 +55,8 @@ OccipitalChannel = {'PPO1','OPO1','OPO2','PPO2'};
 
 % channel selection
 cnt_org.imag = cnt.imag; % backup
-cnt_org.ment = cnt.ment; % backup
 cnt.imag = proc_selectChannels(cnt.imag, [MotorChannel,ParientalChannel]);
+cnt_org.ment = cnt.ment; % backup
 cnt.ment = proc_selectChannels(cnt.ment, [FrontalChannel,ParientalChannel]);
 
 % narrow frequency band selection for CSP
@@ -71,7 +70,7 @@ Rp.imag = 3; % in dB
 Rs.imag = 30; % in dB
 [ord.imag, Ws.imag] = cheb2ord(Wp.imag, Ws.imag, Rp.imag, Rs.imag);
 [filt_b.imag,filt_a.imag] = cheby2(ord.imag, Rs.imag, Ws.imag);
-
+% ------------------------------------------------------------------
 Wp.ment = band_csp.ment/epo.ment.fs*2;
 Ws.ment = [band_csp.ment(1)-3, band_csp.ment(end)+3]/epo.ment.fs*2;
 Rp.ment = 3; % in dB
@@ -96,7 +95,7 @@ for stepIdx = 1:nStep
     segment.ment{stepIdx} = proc_selectIval(epo.ment, ival(stepIdx,:));
 end
 
-% cross-validation
+% cross-validation (nShift x nFold-fold cross-validation)
 nShift = 5; % number of repeatition
 nFold = 5;  % number of subset
 group.imag = epo.imag.y;
@@ -159,7 +158,7 @@ for shiftIdx = 1:nShift
 end
 
 mean_acc.eeg.imag = mean(acc.eeg.imag,1)';
-
+% -----------------------------------------------------------------------------------------------------
 % mental arithmetic
 for shiftIdx = 1:nShift
     indices.ment{shiftIdx} = crossvalind('Kfold',full(vec2ind(group.ment)),nFold);
