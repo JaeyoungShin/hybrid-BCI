@@ -224,4 +224,4 @@ time = (ival(:,2)/1000)';
 figure('Name',subdir_list{vp}, 'Number','off')
 plot(time, mean_acc.eeg.imag, 'b', time, mean_acc.eeg.ment,'r');
 legend('motor imagery','mental arithmetic');
-xlim([-5 17]); ylim([0.4 1]); grid on;
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on;
