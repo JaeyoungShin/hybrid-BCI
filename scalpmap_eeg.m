@@ -7,6 +7,7 @@
 % specify your eeg data directory (EegMyDataDir) and temporary directory (TemDir)
 startup_bbci_toolbox('DataDir',EegMyDataDir,'TmpDir','/tmp/');
 BTB.History = 0; % to aviod error for merging cnt
+fs = 200 % downsampling rate: 20 Hz
 
 %% initial parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -16,125 +17,60 @@ stimDef.eeg= {16, 32;'condition1','condition2'};
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Specify discriminative frequency band. Use alpha band for example.
-band_csp = [8 14]; % alpha-band
+band_csp.imag = [8 14]; % alpha-band for motor imagery
 
 % motor imagery
-for vp = 1 : length(subdir_list.imag)
-    loadDir = fullfile(EegMyDataDir,subdir_list{vp});
-    cd(loadDir);
-    load cnt; load mrk; load mnt;
-    cd(WorkingDir);
-    
-    cnt_temp = cnt; mrk_temp = mrk; % backup
-    clear cnt mrk;
-    
-    [cnt, mrk] = proc_appendCnt(cnt_temp{1}, cnt_temp{3}, cnt_temp{5}, mrk_temp{1}, mrk_temp{3}, mrk_temp{5});  
-    eval(['[cnt_all.imag.',subdir_list.imag{vp},', mrk_all.imag.',subdir_list.imag{vp},'] = proc_appendCnt(cnt13, cnt_temp{5}, mrk13, mrk_temp{5});']);
-    mnt_all = mnt;
-    clear cnt mrk cnt13 mrk13
-    
-    [b,a]= butter(5, band_csp.imag(vp,:)/200*2);
-    disp(band_csp.imag(vp,:));
-    eval(['cnt_all.imag.',subdir_list.imag{vp},' = proc_filt(cnt_all.imag.', subdir_list.imag{vp},', b, a);']);
-end
+loadDir = fullfile(EegMyDataDir,subdir_list{1});
+cd(loadDir);
+load cnt; load mrk; load mnt;
+cd(WorkingDir);
 
-for vp = 1 : length(subdir_list.ment)
-    disp([subdir_list.ment{vp}, ' was started']);
-    loadDir = fullfile(EegMyDataDir,subdir_list.ment{vp});
-    cd(loadDir);
-    load cnt; load mrk; load mnt;
-    cd(IEEEDir);
-    cnt_temp = cnt; mrk_temp = mrk;
-    
-    [cnt24, mrk24] = proc_appendCnt(cnt_temp{2}, cnt_temp{4}, mrk_temp{2}, mrk_temp{4});
-    eval(['[cnt_all.ment.',subdir_list.ment{vp},', mrk_all.ment.',subdir_list.ment{vp},'] = proc_appendCnt(cnt24, cnt_temp{6}, mrk24, mrk_temp{6});']);
-    mnt_all = mnt;
-    clear cnt mrk cnt24 mrk24
-    
-    [b,a]= butter(5, band_csp.ment(vp,:)/200*2);
-    disp(band_csp.ment(vp,:));
-    eval(['cnt_all.ment.',subdir_list.ment{vp},' = proc_filt(cnt_all.ment.', subdir_list.ment{vp},', b, a);']);
-end
+cnt_temp = cnt; mrk_temp = mrk; % backup
+clear cnt mrk;
 
-% initiation
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-cnt_grand.imag = cnt_all.imag.VP003; mrk_grand.imag = mrk_all.imag.VP003;
-cnt_grand.ment = cnt_all.ment.VP005; mrk_grand.ment = mrk_all.ment.VP005;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% imagery
-for vp = 2 : length(subdir_list.imag)
-    disp([subdir_list.imag{vp}, ' was started']);
-    eval(['[cnt_grand.imag, mrk_grand.imag] = proc_appendCnt(cnt_grand.imag, cnt_all.imag.',subdir_list.imag{vp},', mrk_grand.imag, mrk_all.imag.', subdir_list.imag{vp},');']);
-end
+[cnt.imag, mrk.imag] = proc_appendCnt({cnt_temp{1}, cnt_temp{3}, cnt_temp{5}}, {mrk_temp{1}, mrk_temp{3}, mrk_temp{5}}); % merged motor imagery cnts
+[b,a]= butter(3, band_csp.imag/fs*2);
+cnt.imag = proc_filt(cnt.imag, b, a);
 
-% mental arithmetic
-for vp = 2 : length(subdir_list.ment)
-    disp([subdir_list.imag{vp}, ' was started']);
-    eval(['[cnt_grand.ment, mrk_grand.ment] = proc_appendCnt(cnt_grand.ment, cnt_all.ment.',subdir_list.ment{vp},', mrk_grand.ment, mrk_all.ment.', subdir_list.ment{vp},');']);
-end
+% Specify discriminative frequency band. Use alpha band for example.
+band_csp.ment = [8 14]; % alpha-band for motor mentery
 
-mnt_grand = mnt_all;
+% motor mentery
+loadDir = fullfile(EegMyDataDir,subdir_list{1});
+cd(loadDir);
+load cnt; load mrk; load mnt;
+cd(WorkingDir);
 
-ival_erd = [-8 24]*1000;
-ival_scalps= [-7:5:23]*1000;
+cnt_temp = cnt; mrk_temp = mrk; % backup
+clear cnt mrk;
 
+[cnt.ment, mrk.ment] = proc_appendCnt({cnt_temp{2}, cnt_temp{4}, cnt_temp{6}}, {mrk_temp{2}, mrk_temp{4}, mrk_temp{6}}); % merged mental arithmetic cnts
+[b,a]= butter(3, band_csp.ment/fs*2);
+cnt.ment = proc_filt(cnt.ment, b, a);
 
-% imagery
-epo= proc_segmentation(cnt_grand.imag, mrk_grand.imag, ival_erd);
+ival_epo = [-10 25]*1000;
+ival_scalps = [-8 -5; -3 0; 2 5; 7 10; 12 15; 17 20]*1000;
+ival_base = [-3 0]*1000;
+
+% segmentation
+% motor imagery
+epo.imag = proc_segmentation(cnt.imag, mrk.imag, ival_epo);
 epo.className = {'LMI','RMI'};
-erd_car= proc_commonAverageReference(epo);
-erd_car= proc_envelope(erd_car, 'MovAvgMsec', 500);
-erd_car_r= proc_rSquareSigned(erd_car);
+epo_car.imag = proc_commonAverageReference(epo.imag);
+epo_car.imag = proc_envelope(erd_car.imag, 'MovAvgMsec', 500);
+epo_car_r.imag = proc_rSquareSigned(erd_car.imag);
 
-figure(4)
-plot_scalpEvolution(erd_car_r, mnt_grand, ival_scalps, defopt_scalp_r,'Resolution',300, 'ContourfLevels',100);
-clear epo erd_car erd_car_r
+fig_set(1)
+plot_scalpEvolution(erd_car_r, mnt_grand, ival_scalps, defopt_scalp_r);
 
 % mental arithmetic
-epo= proc_segmentation(cnt_grand.ment, mrk_grand.ment, ival_erd);
-epo.className = {'MA','Rest'};
-erd_car= proc_commonAverageReference(epo);
-erd_car= proc_envelope(erd_car, 'MovAvgMsec', 500);
-erd_car_r= proc_rSquareSigned(erd_car);
+epo.ment = proc_segmentation(cnt.ment, mrk.ment, ival_epo);
+epo.className = {'LMI','RMI'};
+epo_car.ment = proc_commonAverageReference(epo.ment);
+epo_car.ment = proc_envelope(erd_car.ment, 'MovAvgMsec', 500);
+epo_car_r.ment = proc_rSquareSigned(erd_car.ment);
 
-figure(5)
-plot_scalpEvolution(erd_car_r, mnt_grand, ival_scalps, defopt_scalp_r,'Resolution',300, 'ContourfLevels',100);
+fig_set(2)
+plot_scalpEvolution(erd_car_r, mnt_grand, ival_scalps, defopt_scalp_r);
 
 
-
-% Bandpass to the frequency band of interest
-% [b,a]= butter(5, band_erd/cnt.fs*2);
-% cnt= proc_filt(cnt, b, a);
-%
-% % Select classes 'left' and 'right'
-% mrk = mrk_selectClasses(mrk,classes);
-%
-% % Artifact rejection based on variance criterion
-% mrk= reject_varEventsAndChannels(cnt, mrk, ival_erd, ...
-%                                  'DoBandpass', 0, ...
-%                                  'Verbose', 1);
-%
-% epo= proc_segmentation(cnt, mrk, ival_erd);
-% erd_lar= proc_localAverageReference(epo, mnt, 'Radius',0.4);
-% erd_lar= proc_envelope(erd_lar, 'MovAvgMsec', 200);
-% erd_lar= proc_baseline(erd_lar, [0 750], 'trialwise', 0);
-% erd= proc_envelope(epo, 'MovAvgMsec', 200);
-% erd= proc_baseline(erd, [0 750], 'trialwise', 0);
-% erd_lar_r= proc_rSquareSigned(erd_lar);
-% erd_r= proc_rSquareSigned(erd);
-%
-% fig_set(1)
-% H= grid_plot(erd, mnt, defopt_erps);
-% grid_addBars(erd_r, 'HScale',H.scale);
-% fig_set(2)
-% H= grid_plot(erd_lar, mnt, defopt_erps);
-% grid_addBars(erd_lar_r, 'HScale',H.scale);
-%
-% fig_set(3);
-% H= plot_scalpEvolutionPlusChannel(erd, mnt, clab, ival_scalps, ...
-%                                   defopt_scalp_erp, ...
-%                                   'ExtrapolateToMean', 1);
-% grid_addBars(erd_r);
-%
-% fig_set(4, 'Resize',[1 2/3]);
-% plot_scalpEvolution(erd_r, mnt, ival_scalps, defopt_scalp_r);
