@@ -1,15 +1,12 @@
-clear all; clc; close all;
+% This file is for eeg-data classification
+% All MATLAB functions are available in BBCI toolbox
+% Some minor code modifications might be applied
+% We do not guarantee all of functions works properly in your platform
+% For more tutorials, visit BBCI toolbox (https://github.com/bbci/bbci_public)
 
-AutobsseogDir = fullfile('C:','Program Files','MATLAB','R2013b','toolbox','eeglab12_0_2_6b','plugins','eeglab_plugin_aar-master');
-MyToolboxDir = fullfile('C:','Program Files','MATLAB','R2013b','toolbox','bbci_public-master');
-EegMyDataDir = fullfile('G:','IEEEdataset','rawdata','EEG');
-IEEEDir = fullfile('C:','Users','Shin','Documents','MATLAB','IEEEdataset');
-
-cd(MyToolboxDir);
+% specify your eeg data directory (EegMyDataDir) and temporary directory (TemDir)
 startup_bbci_toolbox('DataDir',EegMyDataDir,'TmpDir','/tmp/');
-cd(IEEEDir);
-
-addpath(AutobsseogDir);
+BTB.History = 0; % to aviod error for merging cnt
 
 %% initial parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -29,8 +26,9 @@ for vp = 1 : length(subdir_list.imag)
     cd(WorkingDir);
     
     cnt_temp = cnt; mrk_temp = mrk; % backup
+    clear cnt mrk;
     
-    [cnt13, mrk13] = proc_appendCnt(cnt_temp{1}, cnt_temp{3}, mrk_temp{1}, mrk_temp{3});  
+    [cnt, mrk] = proc_appendCnt(cnt_temp{1}, cnt_temp{3}, cnt_temp{5}, mrk_temp{1}, mrk_temp{3}, mrk_temp{5});  
     eval(['[cnt_all.imag.',subdir_list.imag{vp},', mrk_all.imag.',subdir_list.imag{vp},'] = proc_appendCnt(cnt13, cnt_temp{5}, mrk13, mrk_temp{5});']);
     mnt_all = mnt;
     clear cnt mrk cnt13 mrk13
