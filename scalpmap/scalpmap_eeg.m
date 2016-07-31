@@ -11,7 +11,6 @@ fs = 200 % downsampling rate: 200 Hz
 % initial parameter
 subdir_list = {'subject1'}
 basename_list = {'imagery1','arithmetic1','imagery1','arithmetic2','imagery1','arithmetic3'};
-stimDef.eeg= {16, 32;'condition1','condition2'};
 
 % Specify discriminative frequency band. Use alpha band for example.
 band_csp.imag = [8 14]; % alpha-band for motor imagery
