@@ -1,17 +1,16 @@
-% This file is for eeg-data r^2 value scalp map
+% This file is for nirs-data r^2 value scalp map
 % Most of MATLAB functions are available in BBCI toolbox
 % Some minor code modifications might be applied
 % For more tutorials, visit BBCI toolbox (https://github.com/bbci/bbci_public)
 
 % specify your nirs data directory (NirsMyDataDir) and temporary directory (TemDir)
 startup_bbci_toolbox('DataDir',EegMyDataDir,'TmpDir',TemDir);
-BTB.History = 0; % to aviod error for merging cnt
+BTB.History = 0; % to aviod error for merging cnts
 fs = 10 % downsampling rate: 10 Hz
 
 % initial parameter
 subdir_list = {'subject1'}
 basename_list = {'imagery1','arithmetic1','imagery2','arithmetic2','imagery3','arithmetic3'};
-stimDef.eeg= {1, 2;'condition1','condition2'};
 
 % Load data
 % motor imagery
