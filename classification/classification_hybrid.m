@@ -4,13 +4,16 @@
 % We do not guarantee all of functions works properly in your platform
 % If you want to see more tutorials, visit BBCI toolbox (https://github.com/bbci/bbci_public)
 
-% specify your nirs data directory (NirsMyDataDir), temporary directory (TemDir) and working directory (WorkingDir)
+% specify your eeg (EegMyDataDir) and nirs data directory (NirsMyDataDir), temporary directory (TemDir) and working directory (WorkingDir)
 startup_bbci_toolbox('DataDir',NirsMyDataDir,'TmpDir','TemDir);
 BTB.History = 0; % to aviod error for merging cnt
+
 % parameters
 subdir_list = {'VP001'}; % subject
 basename_list = {'motor_imagery1','mental_arithmetic1','motor_imagery2','mental_arithmetic1','motor_imagery3','mental_arithmetic1'}; % task type: motor imagery / recording session: 1 - 3
-stimDef.eeg = {1,2; 'condition1','condition2'};
+
+stimDef.nirs = {1,2; 'condition1','condition2'};
+stimDef.eeg  = {16,32; 'condition1','condition2'};
 
 % load nirs data
 loadDir = fullfile(NirsMyDataDir, subdir_list{1});
@@ -31,7 +34,7 @@ clear cnt mrk;
 
 % band-pass filtering
 band_freq = [0.01 0.1] % Hz
-ord = 3;
+ord.nirs = 3;
 [z,p,k] = cheby2(ord, 30, band_freq/cnt.deoxy{session}.fs*2, 'bandpass');
 [SOS,G] = zp2sos(z,p,k);
 
@@ -93,11 +96,85 @@ for stepIdx = 1:nStep
     slope.ment.oxy{stepIdx}   = proc_slopeAcrossTime(epo.ment.oxy,   ival(stepIdx,:));
 end
 
+%--------------------------------------------------------------------------------------
+
+% load occular artifact-free eeg data
+loadDir = fullfile(EegMyDataDir, subdir_list{1});
+cd(loadDir);
+load cnt; load mrk, load mnt; % load continous eeg signal (cnt), marker (mrk) and montage (mnt)
+cd(WorkingDir)
+
+% merge cnts in each session
+% for motor imagery: imag
+% for mental arithmetic: ment
+cnt_temp = cnt; mrk_temp = mrk; % save data temporarily
+clear cnt mrk;
+[cnt.imag.eeg, mrk.imag.eeg] = proc_appendCnt({cnt_temp{1}, cnt_temp{3}, cnt_temp{5}}, {mrk_temp{1}, mrk_temp{3}, mrk_temp{5}}); % merged motor imagery cnts
+[cnt.ment.eeg, mrk.ment.eeg] = proc_appendCnt({cnt_temp{2}, cnt_temp{4}, cnt_temp{6}}, {mrk_temp{2}, mrk_temp{4}, mrk_temp{6}}); % merged mental arithmetic cnts
+
+% Select EEG channels only (excluding EOG channels) for classification
+% clab = {'F7','FAF5','F3','AFp1','AFp2','FAF6','F4','F8','FAF1','FAF2','Cz','Pz','CFC5','CFC3','CCP5','CCP3','T7','P7','P3','PPO1','OPO1','OPO2','PPO2','P4','CFC4','CFC6','CCP4','CCP6','P8','T8','VEOG','HEOG'}
+cnt.imag.eeg = proc_selectChannels(cnt.imag.eeg,'not','*EOG'); % remove EOG channels (VEOG, HEOG)
+mnt.imag.eeg = mnt_setElectrodePositions(cnt.imag.eeg.clab); % update montage
+cnt.ment.eeg = proc_selectChannels(cnt.ment.eeg,'not','*EOG');
+mnt.ment.eeg = mnt_setElectrodePositions(cnt.ment.eeg.clab);
+
+% common average reference
+cnt.imag.eeg = proc_commonAverageReference(cnt.imag.eeg);
+cnt.ment.eeg = proc_commonAverageReference(cnt.ment.eeg);
+
+% segmentation (epoching)
+ival_epo  = [-10 25]*1000; % epoch range (unit: msec)
+ival_base = [-3 0]*1000; % baseline correction range (unit: msec)
+
+epo.imag.eeg = proc_segmentation(cnt.imag.eeg, mrk.imag.eeg, ival_epo);
+epo.imag.eeg = proc_baseline(epo.imag.eeg,ival_base);
+epo.ment.eeg = proc_segmentation(cnt.ment.eeg, mrk.ment.eeg, ival_epo);
+epo.ment.eeg = proc_baseline(epo.ment.eeg,ival_base);
+
+% frequency band selection for common spatial pattern (CSP)
+MotorChannel = {'CFC5','CFC6','CFC3','CFC4','Cz,','CCP5','CCP6','CCP3','CCP4'};
+ParientalChannel = {'Pz','P3','P4','P7','P8'};
+FrontalChannel = {'F7','FAF5','F3','AFp1','FAF1','AFp2','FAF2','FAF6','F4','F8'};
+OccipitalChannel = {'PPO1','OPO1','OPO2','PPO2'};
+
+% channel selection
+cnt_org.imag.eeg = cnt.imag.eeg; % backup
+cnt.imag.eeg = proc_selectChannels(cnt.imag.eeg, [MotorChannel,ParientalChannel]);
+cnt_org.ment.eeg = cnt.ment.eeg; % backup
+cnt.ment.eeg = proc_selectChannels(cnt.ment.eeg, [FrontalChannel,ParientalChannel]);
+
+% narrow frequency band selection for CSP
+band_csp.imag = select_bandnarrow(cnt.imag.eeg, mrk.imag.eeg, [0 10]*1000); % band selection using 0~10 sec epoch for motor imagery
+band_csp.ment = select_bandnarrow(cnt.ment.eeg, mrk.ment.eeg, [0 10]*1000); % band selection using ~10 sec epoch for mental arithmetic
+
+% Cheby2 bandpass filter with a passband of band_csp, with at most Rp dB of passband ripple and at least Rs dB attenuation in the stopbands that are 3 Hz wide on both sides of the passband
+Wp.imag = band_csp.imag/epo.imag.fs*2;
+Ws.imag = [band_csp.imag(1)-3, band_csp.imag(end)+3]/epo.imag.fs*2;
+Rp.imag = 3; % in dB
+Rs.imag = 30; % in dB
+[ord.imag, Ws.imag] = cheb2ord(Wp.imag, Ws.imag, Rp.imag, Rs.imag);
+[filt_b.imag,filt_a.imag] = cheby2(ord.imag, Rs.imag, Ws.imag);
+% ------------------------------------------------------------------
+Wp.ment = band_csp.ment/epo.ment.fs*2;
+Ws.ment = [band_csp.ment(1)-3, band_csp.ment(end)+3]/epo.ment.fs*2;
+Rp.ment = 3; % in dB
+Rs.ment = 30; % in dB
+[ord.ment, Ws.ment] = cheb2ord(Wp.ment, Ws.ment, Rp.ment, Rs.ment);
+[filt_b.ment,filt_a.ment] = cheby2(ord.ment, Rs.ment, Ws.ment);
+
+epo.imag.eeg = proc_filtfilt(epo.imag.eeg, filt_b.imag, filt_a.imag);
+epo.ment.eeg = proc_filtfilt(epo.ment.eeg, filt_b.ment, filt_a.ment);
+
 % cross-validation (nShift x nFold-fold cross-validation)
 % for more convenient use, please refer to 'https://github.com/bbci/bbci_public/blob/master/demos/demo_validation_csp.m'
 % cross-validation below was written for meta-classification for EEG-NIRS hybrid BCI
 group.imag = epo.imag.deoxy.y; % epo.imag.deoxy.y == epo.imag.oxy.y
 group.ment = epo.ment.deoxy.y; % epo.ment.deoxy.y == epo.ment.oxy.y
+
+
+
+
     
 % motor imagery
 for shiftIdx = 1:nShift
