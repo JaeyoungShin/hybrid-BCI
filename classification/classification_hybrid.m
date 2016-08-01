@@ -72,30 +72,6 @@ epo.ment.oxy   = proc_segmentation(cnt.ment.oxy, mrk.ment.oxy, ival_epo);
 epo.ment.deoxy = proc_baseline(epo.ment.deoxy,ival_base);
 epo.ment.oxy   = proc_baseline(epo.ment.oxy,ival_base);
 
-%% classification by using moving time windows
-StepSize = 1*1000; % msec
-WindowSize = 3*1000; % msec
-ival_start = (ival_epo(1):StepSize:ival_epo(end)-WindowSize)';
-ival_end = ival_start+WindowSize;
-ival = [ival_start, ival_end];
-nStep = length(ival);
-
-% average
-for stepIdx = 1:nStep
-    ave.imag.deoxy{stepIdx} = proc_meanAcrossTime(epo.imag.deoxy, ival(stepIdx,:));
-    ave.imag.oxy{stepIdx}   = proc_meanAcrossTime(epo.imag.oxy,   ival(stepIdx,:));
-    ave.ment.deoxy{stepIdx} = proc_meanAcrossTime(epo.ment.deoxy, ival(stepIdx,:));
-    ave.ment.oxy{stepIdx}   = proc_meanAcrossTime(epo.ment.oxy,   ival(stepIdx,:));
-end
-
-% slope
-for stepIdx = 1:nStep
-    slope.imag.deoxy{stepIdx} = proc_slopeAcrossTime(epo.imag.deoxy, ival(stepIdx,:));
-    slope.imag.oxy{stepIdx}   = proc_slopeAcrossTime(epo.imag.oxy,   ival(stepIdx,:));
-    slope.ment.deoxy{stepIdx} = proc_slopeAcrossTime(epo.ment.deoxy, ival(stepIdx,:));
-    slope.ment.oxy{stepIdx}   = proc_slopeAcrossTime(epo.ment.oxy,   ival(stepIdx,:));
-end
-
 %--------------------------------------------------------------------------------------
 
 % load occular artifact-free eeg data
@@ -166,130 +142,355 @@ Rs.ment = 30; % in dB
 epo.imag.eeg = proc_filtfilt(epo.imag.eeg, filt_b.imag, filt_a.imag);
 epo.ment.eeg = proc_filtfilt(epo.ment.eeg, filt_b.ment, filt_a.ment);
 
-% cross-validation (nShift x nFold-fold cross-validation)
-% for more convenient use, please refer to 'https://github.com/bbci/bbci_public/blob/master/demos/demo_validation_csp.m'
-% cross-validation below was written for meta-classification for EEG-NIRS hybrid BCI
-group.imag = epo.imag.deoxy.y; % epo.imag.deoxy.y == epo.imag.oxy.y
+%% classification by using moving time windows
+StepSize = 1*1000; % msec
+WindowSize = 3*1000; % msec
+ival_start = (ival_epo(1):StepSize:ival_epo(end)-WindowSize)';
+ival_end = ival_start+WindowSize;
+ival = [ival_start, ival_end];
+nStep = length(ival);
+
+% average
+for stepIdx = 1:nStep
+    ave.imag.deoxy{stepIdx} = proc_meanAcrossTime(epo.imag.deoxy, ival(stepIdx,:));
+    ave.imag.oxy{stepIdx}   = proc_meanAcrossTime(epo.imag.oxy,   ival(stepIdx,:));
+    ave.ment.deoxy{stepIdx} = proc_meanAcrossTime(epo.ment.deoxy, ival(stepIdx,:));
+    ave.ment.oxy{stepIdx}   = proc_meanAcrossTime(epo.ment.oxy,   ival(stepIdx,:));
+end
+
+% slope
+for stepIdx = 1:nStep
+    slope.imag.deoxy{stepIdx} = proc_slopeAcrossTime(epo.imag.deoxy, ival(stepIdx,:));
+    slope.imag.oxy{stepIdx}   = proc_slopeAcrossTime(epo.imag.oxy,   ival(stepIdx,:));
+    slope.ment.deoxy{stepIdx} = proc_slopeAcrossTime(epo.ment.deoxy, ival(stepIdx,:));
+    slope.ment.oxy{stepIdx}   = proc_slopeAcrossTime(epo.ment.oxy,   ival(stepIdx,:));
+end
+
+% segment for log-variance
+for stepIdx = 1:nStep
+    segment.imag{stepIdx} = proc_selectIval(epo.imag.eeg, ival(stepIdx,:));
+    segment.ment{stepIdx} = proc_selectIval(epo.ment.eeg, ival(stepIdx,:));
+end
+
+%--------------------------------------------------------------------------------------------------
+%% 10x5-fold cross-validation
+nShift = 10;
+nFold = 5;
+
+group.imag = epo.imag.deoxy.y; % epo.imag.deoxy.y == epo.imag.oxy.y == epo.imag.eeg.y
 group.ment = epo.ment.deoxy.y; % epo.ment.deoxy.y == epo.ment.oxy.y
 
-
-
-
-    
 % motor imagery
 for shiftIdx = 1:nShift
     indices.imag{shiftIdx} = crossvalind('Kfold',full(vec2ind(group.imag)),nFold);
+    
     for stepIdx = 1:nStep
-        fprintf('Motor imagery, Repeat: %d/%d, Step: %d/%d\n',shiftIdx, nShift, stepIdx, nStep);
         for foldIdx = 1:nFold
             test = (indices.imag{shiftIdx} == foldIdx); train = ~test;
             
-            x_train.deoxy.x = [squeeze(ave.imag.deoxy{stepIdx}.x(:,:,train)); squeeze(slope.imag.deoxy{stepIdx}.x(:,:,train))];
-            x_train.deoxy.y = squeeze(ave.imag.deoxy{stepIdx}.y(:,train));
+            % HbR
+            x_train.deoxy.x    = [squeeze(ave.imag.deoxy{stepIdx}.x(:,:,train)); squeeze(slope.imag.deoxy{stepIdx}.x(:,:,train))];
+            x_train.deoxy.y    = squeeze(ave.imag.deoxy{stepIdx}.y(:,train));
             x_train.deoxy.clab = ave.imag.deoxy{stepIdx}.clab;
             
-            x_train.oxy.x = [squeeze(ave.imag.oxy{stepIdx}.x(:,:,train)); squeeze(slope.imag.oxy{stepIdx}.x(:,:,train))];
-            x_train.oxy.y   = squeeze(ave.imag.oxy{stepIdx}.y(:,train));
-            x_train.oxy.clab   = ave.imag.oxy{stepIdx}.clab;
-            
-            x_test.deoxy.x = [squeeze(ave.imag.deoxy{stepIdx}.x(:,:,test)); squeeze(slope.imag.deoxy{stepIdx}.x(:,:,test))];
-            x_test.deoxy.y = squeeze(ave.imag.deoxy{stepIdx}.y(:,test));
+            x_test.deoxy.x    = [squeeze(ave.imag.deoxy{stepIdx}.x(:,:,test)); squeeze(slope.imag.deoxy{stepIdx}.x(:,:,test))];
+            x_test.deoxy.y    = squeeze(ave.imag.deoxy{stepIdx}.y(:,test));
             x_test.deoxy.clab = ave.imag.deoxy{stepIdx}.clab;
-            
-            x_test.oxy.x = [squeeze(ave.imag.oxy{stepIdx}.x(:,:,test)); squeeze(slope.imag.oxy{stepIdx}.x(:,:,test))];
-            x_test.oxy.y = squeeze(ave.imag.oxy{stepIdx}.y(:,test));
+
+            % HbO
+            x_train.oxy.x      = [squeeze(ave.imag.oxy{stepIdx}.x(:,:,train)); squeeze(slope.imag.oxy{stepIdx}.x(:,:,train))];
+            x_train.oxy.y      = squeeze(ave.imag.oxy{stepIdx}.y(:,train));
+            x_train.oxy.clab   = ave.imag.oxy{stepIdx}.clab;
+         
+            x_test.oxy.x    = [squeeze(ave.imag.oxy{stepIdx}.x(:,:,test)); squeeze(slope.imag.oxy{stepIdx}.x(:,:,test))];
+            x_test.oxy.y    = squeeze(ave.imag.oxy{stepIdx}.y(:,test));
             x_test.oxy.clab = ave.imag.oxy{stepIdx}.clab;
             
+            % eeg
+            x_train.eeg.x    = squeeze(segment.imag{stepIdx}.x(:,:,train));
+            x_train.eeg.y    = squeeze(segment.imag{stepIdx}.y(:,train));
+            x_train.eeg.clab = segment.imag{stepIdx}.clab;
+            
+            x_test.eeg.x    = squeeze(segment.imag{stepIdx}.x(:,:,test));
+            x_test.eeg.y    = squeeze(segment.imag{stepIdx}.y(:,test));
+            x_test.eeg.clab = segment.imag{stepIdx}.clab;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%% CSP for EEG %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            [csp_train, CSP_W, CSP_EIG, CSP_A] = proc_cspAuto(x_train.eeg);
+            csp_train.x = csp_train.x(:,[1 2 end-1 end],:);
+            
+            for testIdx = 1 : size(find(test==1),1)
+                csp_test.x(:,:,testIdx) = x_test.eeg.x(:,:,testIdx)*CSP_W;
+            end
+            csp_test.x = csp_test.x(:,[1 2 end-1 end],:);
+            
+            csp_train.y    = x_train.eeg.y;
+            csp_train.clab = x_train.eeg.clab;
+            csp_test.y     = x_test.eeg.y;
+            csp_test.clab  = x_test.eeg.clab;
+            
+            % variance and logarithm
+            var_train = proc_variance(csp_train);
+            var_test  = proc_variance(csp_test);
+            logvar_train = proc_logarithm(var_train);
+            logvar_test  = proc_logarithm(var_test);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
             % feature vector
-            fv_train.deoxy.x = x_train.deoxy.x; fv_train.deoxy.y = x_train.deoxy.y; fv_train.deoxy.className = {'Cond1','Cond2'};
-            fv_test.deoxy.x  = x_test.deoxy.x;  fv_test.deoxy.y  = x_test.deoxy.y;  fv_test.deoxy.className  = {'Cond1','Cond2'};
-            fv_train.oxy.x   = x_train.oxy.x;   fv_train.oxy.y   = x_train.oxy.y;   fv_train.oxy.className   = {'Cond1','Cond2'};
-            fv_test.oxy.x    = x_test.oxy.x;    fv_test.oxy.y    = x_test.oxy.y;    fv_test.oxy.className    = {'Cond1','Cond2'};
+            fv_train.deoxy.x = x_train.deoxy.x; fv_train.deoxy.y = x_train.deoxy.y; fv_train.deoxy.className = {'LMI','RMI'};
+            fv_test.deoxy.x  = x_test.deoxy.x;  fv_test.deoxy.y  = x_test.deoxy.y;  fv_test.deoxy.className  = {'LMI','RMI'};
+            fv_train.oxy.x   = x_train.oxy.x;   fv_train.oxy.y   = x_train.oxy.y;   fv_train.oxy.className   = {'LMI','RMI'};
+            fv_test.oxy.x    = x_test.oxy.x;    fv_test.oxy.y    = x_test.oxy.y;    fv_test.oxy.className    = {'LMI','RMI'};
+            fv_train.eeg.x   = logvar_train.x;   fv_train.eeg.y  = x_train.eeg.y;   fv_train.eeg.className   = {'LMI','RMI'};
+            fv_test.eeg.x    = logvar_test.x;   fv_test.eeg.y    = x_test.eeg.y;    fv_test.eeg.className    = {'LMI','RMI'};
+            
+            % for eeg only
+            fv_train.eeg.x = squeeze(fv_train.eeg.x);
+            fv_test.eeg.x  = squeeze(fv_test.eeg.x);
             
             y_train  = group.imag(:,train);
             y_test   = vec2ind(group.imag(:,test));
             
-            
             % train classifier
-            C.deoxy = train_RLDAshrink(fv_train.deoxy.x,y_train);
-            C.oxy   = train_RLDAshrink(fv_train.oxy.x  ,y_train);
+            C.deoxy = train_RLDAshrink(fv_train.deoxy.x, y_train);
+            C.oxy   = train_RLDAshrink(fv_train.oxy.x  , y_train);
+            C.eeg   = train_RLDAshrink(fv_train.eeg.x  , y_train);
+            
+            %%%%%%%%%%%%%%%%%%%%%% train meta-classifier %%%%%%%%%%%%%%%%%%%%%%%%%
+            map_train.deoxy.x = LDAmapping(C.deoxy, fv_train.deoxy.x, 'meta');
+            map_train.oxy.x   = LDAmapping(C.oxy,   fv_train.oxy.x,   'meta');
+            map_train.eeg.x   = LDAmapping(C.eeg,   fv_train.eeg.x,   'meta');
+            
+            map_test.deoxy.x  = LDAmapping(C.deoxy, fv_test.deoxy.x,  'meta');
+            map_test.oxy.x    = LDAmapping(C.oxy,   fv_test.oxy.x,    'meta');
+            map_test.eeg.x    = LDAmapping(C.eeg,   fv_test.eeg.x,    'meta');
+            
+            % meta1: HbR+HbO / meta2: HbR+EEG / meta3: HbO+EEG / meta4: HbR+HbO+EEG
+            fv_train.meta1.x = [map_train.deoxy.x; map_train.oxy.x];
+            fv_test.meta1.x  = [map_test.deoxy.x ; map_test.oxy.x];
+            
+            fv_train.meta2.x = [map_train.deoxy.x; map_train.eeg.x];
+            fv_test.meta2.x  = [map_test.deoxy.x ; map_test.eeg.x];
+            
+            fv_train.meta3.x = [map_train.oxy.x; map_train.eeg.x];
+            fv_test.meta3.x  = [map_test.oxy.x ; map_test.eeg.x];
+            
+            fv_train.meta4.x = [map_train.deoxy.x; map_train.oxy.x; map_train.eeg.x];
+            fv_test.meta4.x  = [map_test.deoxy.x ; map_test.oxy.x ; map_test.eeg.x];
+            
+            y_map_train = y_train;
+            y_map_test  = y_test;
+            
+            C.meta1 = train_RLDAshrink(fv_train.meta1.x, y_map_train);
+            C.meta2 = train_RLDAshrink(fv_train.meta2.x, y_map_train);
+            C.meta3 = train_RLDAshrink(fv_train.meta3.x, y_map_train);
+            C.meta4 = train_RLDAshrink(fv_train.meta4.x, y_map_train);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             % classification
-            grouphat.deoxy(foldIdx,:) = LDAmapping(C.deoxy,fv_test.deoxy.x);
-            grouphat.oxy(foldIdx,:)   = LDAmapping(C.oxy,  fv_test.oxy.x);
-                
-            cmat.deoxy(:,:,foldIdx) = confusionmat(y_test, grouphat.deoxy(foldIdx,:));
-            cmat.oxy(:,:,foldIdx)   = confusionmat(y_test, grouphat.oxy(foldIdx,:));
+            grouphat.deoxy(foldIdx,:)  = LDAmapping(C.deoxy,fv_test.deoxy.x);
+            grouphat.oxy(foldIdx,:)    = LDAmapping(C.oxy,  fv_test.oxy.x);
+            grouphat.eeg(foldIdx,:)    = LDAmapping(C.eeg,  fv_test.eeg.x);
+            grouphat.meta1(foldIdx,:)  = LDAmapping(C.meta1, fv_test.meta1.x);
+            grouphat.meta2(foldIdx,:)  = LDAmapping(C.meta2, fv_test.meta2.x);
+            grouphat.meta3(foldIdx,:)  = LDAmapping(C.meta3, fv_test.meta3.x);
+            grouphat.meta4(foldIdx,:)  = LDAmapping(C.meta4, fv_test.meta4.x);
             
+            cmat.deoxy(:,:,foldIdx)  = confusionmat(y_test, grouphat.deoxy(foldIdx,:));
+            cmat.oxy(:,:,foldIdx)    = confusionmat(y_test, grouphat.oxy(foldIdx,:));
+            cmat.eeg(:,:,foldIdx)    = confusionmat(y_test, grouphat.eeg(foldIdx,:));
+            cmat.meta1(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta1(foldIdx,:));
+            cmat.meta2(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta2(foldIdx,:));
+            cmat.meta3(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta3(foldIdx,:));
+            cmat.meta4(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta4(foldIdx,:));
         end
-        acc.deoxy.imag(shiftIdx,stepIdx)   = trace((sum(cmat.deoxy,3))) / sum(sum(sum(cmat.deoxy,3),2),1);
-        acc.oxy.imag(shiftIdx,stepIdx)     = trace((sum(cmat.oxy,3))) / sum(sum(sum(cmat.oxy,3),2),1);
+        
+        acc.imag.deoxy(shiftIdx,stepIdx)    = trace((sum(cmat.deoxy,3))) / sum(sum(sum(cmat.deoxy,3),2),1);
+        acc.imag.oxy(shiftIdx,stepIdx)      = trace((sum(cmat.oxy,3)))   / sum(sum(sum(cmat.oxy,3),2),1);
+        acc.imag.eeg(shiftIdx,stepIdx)      = trace((sum(cmat.eeg,3)))   / sum(sum(sum(cmat.eeg,3),2),1);
+        acc.imag.meta1(shiftIdx,stepIdx)    = trace((sum(cmat.meta1,3)))  / sum(sum(sum(cmat.meta1,3),2),1);
+        acc.imag.meta2(shiftIdx,stepIdx)    = trace((sum(cmat.meta2,3)))  / sum(sum(sum(cmat.meta2,3),2),1);
+        acc.imag.meta3(shiftIdx,stepIdx)    = trace((sum(cmat.meta3,3)))  / sum(sum(sum(cmat.meta3,3),2),1);
+        acc.imag.meta4(shiftIdx,stepIdx)    = trace((sum(cmat.meta4,3)))  / sum(sum(sum(cmat.meta4,3),2),1);
     end
 end
 
-mean_acc.imag.deoxy = mean(acc.deoxy.imag,1)';
-mean_acc.imag.oxy = mean(acc.oxy.imag,1)';
+mean_acc.imag.deoxy  = mean(acc.imag.deoxy,1)';
+mean_acc.imag.oxy    = mean(acc.imag.oxy,1)';
+mean_acc.imag.eeg    = mean(acc.imag.eeg,1)';
+mean_acc.imag.meta1  = mean(acc.imag.meta1,1)';
+mean_acc.imag.meta2  = mean(acc.imag.meta2,1)';
+mean_acc.imag.meta3  = mean(acc.imag.meta3,1)';
+mean_acc.imag.meta4  = mean(acc.imag.meta4,1)';
+    
+time = (ival(:,2)/1000)';
+acc.imag.time = time;
+
+% display
+figure('Name','Hybrid Motor imagery', 'Number', 'off')
+subplot(2,2,1); plot(time, mean_acc.imag.deoxy, 'r', time, mean_acc.imag.oxy, 'b', time, mean_acc.imag.eeg,'k','Location','NorthWest');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MI DEOXY','MI OXY','MI EEG','Location','NorthWest');
+subplot(2,2,2); plot(time, mean_acc.imag.deoxy, 'r', time, mean_acc.imag.meta2, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MI DEOXY','MI DEOXY+EEG','Location','NorthWest');
+subplot(2,2,3); plot(time, mean_acc.imag.oxy,   'r', time, mean_acc.imag.meta3, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MI OXY','MI OXY+EEG','Location','NorthWest');
+subplot(2,2,4); plot(time, mean_acc.imag.meta1, 'r', time, mean_acc.imag.meta4, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MI DEOXY+OXY','MI DEOXY+OXY+EEG','Location','NorthWest');
 
 %-----------------------------------------------------------------------------------------------------------
 % mental arithmetic
 for shiftIdx = 1:nShift
     indices.ment{shiftIdx} = crossvalind('Kfold',full(vec2ind(group.ment)),nFold);
+    
     for stepIdx = 1:nStep
-        fprintf('Mental arithmetic, Repeat: %d/%d, Step: %d/%d\n',shiftIdx, nShift, stepIdx, nStep);
         for foldIdx = 1:nFold
             test = (indices.ment{shiftIdx} == foldIdx); train = ~test;
             
-            x_train.deoxy.x = [squeeze(ave.ment.deoxy{stepIdx}.x(:,:,train)); squeeze(slope.ment.deoxy{stepIdx}.x(:,:,train))];
-            x_train.deoxy.y = squeeze(ave.ment.deoxy{stepIdx}.y(:,train));
+            % HbR
+            x_train.deoxy.x    = [squeeze(ave.ment.deoxy{stepIdx}.x(:,:,train)); squeeze(slope.ment.deoxy{stepIdx}.x(:,:,train))];
+            x_train.deoxy.y    = squeeze(ave.ment.deoxy{stepIdx}.y(:,train));
             x_train.deoxy.clab = ave.ment.deoxy{stepIdx}.clab;
             
-            x_train.oxy.x = [squeeze(ave.ment.oxy{stepIdx}.x(:,:,train)); squeeze(slope.ment.oxy{stepIdx}.x(:,:,train))];
-            x_train.oxy.y   = squeeze(ave.ment.oxy{stepIdx}.y(:,train));
-            x_train.oxy.clab   = ave.ment.oxy{stepIdx}.clab;
-            
-            x_test.deoxy.x = [squeeze(ave.ment.deoxy{stepIdx}.x(:,:,test)); squeeze(slope.ment.deoxy{stepIdx}.x(:,:,test))];
-            x_test.deoxy.y = squeeze(ave.ment.deoxy{stepIdx}.y(:,test));
+            x_test.deoxy.x    = [squeeze(ave.ment.deoxy{stepIdx}.x(:,:,test)); squeeze(slope.ment.deoxy{stepIdx}.x(:,:,test))];
+            x_test.deoxy.y    = squeeze(ave.ment.deoxy{stepIdx}.y(:,test));
             x_test.deoxy.clab = ave.ment.deoxy{stepIdx}.clab;
             
-            x_test.oxy.x = [squeeze(ave.ment.oxy{stepIdx}.x(:,:,test)); squeeze(slope.ment.oxy{stepIdx}.x(:,:,test))];
-            x_test.oxy.y = squeeze(ave.ment.oxy{stepIdx}.y(:,test));
+            % HbO
+            x_train.oxy.x      = [squeeze(ave.ment.oxy{stepIdx}.x(:,:,train)); squeeze(slope.ment.oxy{stepIdx}.x(:,:,train))];
+            x_train.oxy.y      = squeeze(ave.ment.oxy{stepIdx}.y(:,train));
+            x_train.oxy.clab   = ave.ment.oxy{stepIdx}.clab;
+            
+            x_test.oxy.x    = [squeeze(ave.ment.oxy{stepIdx}.x(:,:,test)); squeeze(slope.ment.oxy{stepIdx}.x(:,:,test))];
+            x_test.oxy.y    = squeeze(ave.ment.oxy{stepIdx}.y(:,test));
             x_test.oxy.clab = ave.ment.oxy{stepIdx}.clab;
-
+            
+            % eeg
+            x_train.eeg.x    = squeeze(segment.ment{stepIdx}.x(:,:,train));
+            x_train.eeg.y    = squeeze(segment.ment{stepIdx}.y(:,train));
+            x_train.eeg.clab = segment.ment{stepIdx}.clab;
+            
+            x_test.eeg.x    = squeeze(segment.ment{stepIdx}.x(:,:,test));
+            x_test.eeg.y    = squeeze(segment.ment{stepIdx}.y(:,test));
+            x_test.eeg.clab = segment.ment{stepIdx}.clab;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%% CSP for EEG %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            [csp_train, CSP_W, CSP_EIG, CSP_A] = proc_cspAuto(x_train.eeg);
+            csp_train.x = csp_train.x(:,[1 2 end-1 end],:);
+            
+            for testIdx = 1 : size(find(test==1),1)
+                csp_test.x(:,:,testIdx) = x_test.eeg.x(:,:,testIdx)*CSP_W;
+            end
+            csp_test.x = csp_test.x(:,[1 2 end-1 end],:);
+            
+            csp_train.y    = x_train.eeg.y;
+            csp_train.clab = x_train.eeg.clab;
+            csp_test.y     = x_test.eeg.y;
+            csp_test.clab  = x_test.eeg.clab;
+            
+            % variance and logarithm
+            var_train = proc_variance(csp_train);
+            var_test  = proc_variance(csp_test);
+            logvar_train = proc_logarithm(var_train);
+            logvar_test  = proc_logarithm(var_test);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
             % feature vector
-            fv_train.deoxy.x = x_train.deoxy.x; fv_train.deoxy.y = x_train.deoxy.y; fv_train.deoxy.className = {'Cond1','Cond2'};
-            fv_test.deoxy.x  = x_test.deoxy.x;  fv_test.deoxy.y  = x_test.deoxy.y;  fv_test.deoxy.className  = {'Cond1','Cond2'};
-            fv_train.oxy.x   = x_train.oxy.x;   fv_train.oxy.y   = x_train.oxy.y;   fv_train.oxy.className   = {'Cond1','Cond2'};
-            fv_test.oxy.x    = x_test.oxy.x;    fv_test.oxy.y    = x_test.oxy.y;    fv_test.oxy.className    = {'Cond1','Cond2'};
+            fv_train.deoxy.x = x_train.deoxy.x; fv_train.deoxy.y = x_train.deoxy.y; fv_train.deoxy.className = {'LMI','RMI'};
+            fv_test.deoxy.x  = x_test.deoxy.x;  fv_test.deoxy.y  = x_test.deoxy.y;  fv_test.deoxy.className  = {'LMI','RMI'};
+            fv_train.oxy.x   = x_train.oxy.x;   fv_train.oxy.y   = x_train.oxy.y;   fv_train.oxy.className   = {'LMI','RMI'};
+            fv_test.oxy.x    = x_test.oxy.x;    fv_test.oxy.y    = x_test.oxy.y;    fv_test.oxy.className    = {'LMI','RMI'};
+            fv_train.eeg.x   = logvar_train.x;   fv_train.eeg.y  = x_train.eeg.y;   fv_train.eeg.className   = {'LMI','RMI'};
+            fv_test.eeg.x    = logvar_test.x;   fv_test.eeg.y    = x_test.eeg.y;    fv_test.eeg.className    = {'LMI','RMI'};
+            
+            % for eeg only
+            fv_train.eeg.x = squeeze(fv_train.eeg.x);
+            fv_test.eeg.x  = squeeze(fv_test.eeg.x);
             
             y_train  = group.ment(:,train);
             y_test   = vec2ind(group.ment(:,test));
             
             % train classifier
-            C.deoxy = train_RLDAshrink(fv_train.deoxy.x,y_train);
-            C.oxy   = train_RLDAshrink(fv_train.oxy.x  ,y_train);
+            C.deoxy = train_RLDAshrink(fv_train.deoxy.x, y_train);
+            C.oxy   = train_RLDAshrink(fv_train.oxy.x  , y_train);
+            C.eeg   = train_RLDAshrink(fv_train.eeg.x  , y_train);
+            
+            %%%%%%%%%%%%%%%%%%%%%% train meta-classifier %%%%%%%%%%%%%%%%%%%%%%%%%
+            map_train.deoxy.x = LDAmapping(C.deoxy, fv_train.deoxy.x, 'meta');
+            map_train.oxy.x   = LDAmapping(C.oxy,   fv_train.oxy.x,   'meta');
+            map_train.eeg.x   = LDAmapping(C.eeg,   fv_train.eeg.x,   'meta');
+            
+            map_test.deoxy.x  = LDAmapping(C.deoxy, fv_test.deoxy.x,  'meta');
+            map_test.oxy.x    = LDAmapping(C.oxy,   fv_test.oxy.x,    'meta');
+            map_test.eeg.x    = LDAmapping(C.eeg,   fv_test.eeg.x,    'meta');
+            
+            % meta1: HbR+HbO / meta2: HbR+EEG / meta3: HbO+EEG / meta4: HbR+HbO+EEG
+            fv_train.meta1.x = [map_train.deoxy.x; map_train.oxy.x];
+            fv_test.meta1.x  = [map_test.deoxy.x ; map_test.oxy.x];
+            
+            fv_train.meta2.x = [map_train.deoxy.x; map_train.eeg.x];
+            fv_test.meta2.x  = [map_test.deoxy.x ; map_test.eeg.x];
+            
+            fv_train.meta3.x = [map_train.oxy.x; map_train.eeg.x];
+            fv_test.meta3.x  = [map_test.oxy.x ; map_test.eeg.x];
+            
+            fv_train.meta4.x = [map_train.deoxy.x; map_train.oxy.x; map_train.eeg.x];
+            fv_test.meta4.x  = [map_test.deoxy.x ; map_test.oxy.x ; map_test.eeg.x];
+            
+            y_map_train = y_train;
+            y_map_test  = y_test;
+            
+            C.meta1 = train_RLDAshrink(fv_train.meta1.x, y_map_train);
+            C.meta2 = train_RLDAshrink(fv_train.meta2.x, y_map_train);
+            C.meta3 = train_RLDAshrink(fv_train.meta3.x, y_map_train);
+            C.meta4 = train_RLDAshrink(fv_train.meta4.x, y_map_train);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             % classification
-            grouphat.deoxy(foldIdx,:) = LDAmapping(C.deoxy,fv_test.deoxy.x);
-            grouphat.oxy(foldIdx,:)   = LDAmapping(C.oxy,  fv_test.oxy.x);
+            grouphat.deoxy(foldIdx,:)  = LDAmapping(C.deoxy,fv_test.deoxy.x);
+            grouphat.oxy(foldIdx,:)    = LDAmapping(C.oxy,  fv_test.oxy.x);
+            grouphat.eeg(foldIdx,:)    = LDAmapping(C.eeg,  fv_test.eeg.x);
+            grouphat.meta1(foldIdx,:)  = LDAmapping(C.meta1, fv_test.meta1.x);
+            grouphat.meta2(foldIdx,:)  = LDAmapping(C.meta2, fv_test.meta2.x);
+            grouphat.meta3(foldIdx,:)  = LDAmapping(C.meta3, fv_test.meta3.x);
+            grouphat.meta4(foldIdx,:)  = LDAmapping(C.meta4, fv_test.meta4.x);
             
-            cmat.deoxy(:,:,foldIdx) = confusionmat(y_test, grouphat.deoxy(foldIdx,:));
-            cmat.oxy(:,:,foldIdx)   = confusionmat(y_test, grouphat.oxy(foldIdx,:));
-            
+            cmat.deoxy(:,:,foldIdx)  = confusionmat(y_test, grouphat.deoxy(foldIdx,:));
+            cmat.oxy(:,:,foldIdx)    = confusionmat(y_test, grouphat.oxy(foldIdx,:));
+            cmat.eeg(:,:,foldIdx)    = confusionmat(y_test, grouphat.eeg(foldIdx,:));
+            cmat.meta1(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta1(foldIdx,:));
+            cmat.meta2(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta2(foldIdx,:));
+            cmat.meta3(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta3(foldIdx,:));
+            cmat.meta4(:,:,foldIdx)  = confusionmat(y_test, grouphat.meta4(foldIdx,:));
         end
-        acc.deoxy.ment(shiftIdx,stepIdx)   = trace((sum(cmat.deoxy,3))) / sum(sum(sum(cmat.deoxy,3),2),1);
-        acc.oxy.ment(shiftIdx,stepIdx)     = trace((sum(cmat.oxy,3))) / sum(sum(sum(cmat.oxy,3),2),1);
+        
+        acc.ment.deoxy(shiftIdx,stepIdx)    = trace((sum(cmat.deoxy,3))) / sum(sum(sum(cmat.deoxy,3),2),1);
+        acc.ment.oxy(shiftIdx,stepIdx)      = trace((sum(cmat.oxy,3)))   / sum(sum(sum(cmat.oxy,3),2),1);
+        acc.ment.eeg(shiftIdx,stepIdx)      = trace((sum(cmat.eeg,3)))   / sum(sum(sum(cmat.eeg,3),2),1);
+        acc.ment.meta1(shiftIdx,stepIdx)    = trace((sum(cmat.meta1,3)))  / sum(sum(sum(cmat.meta1,3),2),1);
+        acc.ment.meta2(shiftIdx,stepIdx)    = trace((sum(cmat.meta2,3)))  / sum(sum(sum(cmat.meta2,3),2),1);
+        acc.ment.meta3(shiftIdx,stepIdx)    = trace((sum(cmat.meta3,3)))  / sum(sum(sum(cmat.meta3,3),2),1);
+        acc.ment.meta4(shiftIdx,stepIdx)    = trace((sum(cmat.meta4,3)))  / sum(sum(sum(cmat.meta4,3),2),1);
     end
 end
 
-mean_acc.ment.deoxy = mean(acc.deoxy.ment,1)';
-mean_acc.ment.oxy = mean(acc.oxy.ment,1)';
+mean_acc.ment.deoxy  = mean(acc.ment.deoxy,1)';
+mean_acc.ment.oxy    = mean(acc.ment.oxy,1)';
+mean_acc.ment.eeg    = mean(acc.ment.eeg,1)';
+mean_acc.ment.meta1  = mean(acc.ment.meta1,1)';
+mean_acc.ment.meta2  = mean(acc.ment.meta2,1)';
+mean_acc.ment.meta3  = mean(acc.ment.meta3,1)';
+mean_acc.ment.meta4  = mean(acc.ment.meta4,1)';
 
-result= [mean_acc.imag.deoxy, mean_acc.imag.oxy, mean_acc.ment.deoxy, mean_acc.ment.oxy];
+time = (ival(:,2)/1000)';
+acc.ment.time = time;
 
 % display
-time = (ival(:,2)/1000)';
-figure('Name',subdir_list{vp},'Number','off')
-plot(time,result);
-legend('imag deoxy','imag oxy','ment deoxy','ment oxy');
-xlim([time(1) time(end)]); ylim([0.4 1]); grid on;
-
+figure('Name','Hybrid Mental arithmetic', 'Number', 'off')
+subplot(2,2,1); plot(time, mean_acc.ment.deoxy, 'r', time, mean_acc.ment.oxy, 'b', time, mean_acc.ment.eeg,'k','Location','NorthWest');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MA DEOXY','MA OXY','MA EEG','Location','NorthWest');
+subplot(2,2,2); plot(time, mean_acc.ment.deoxy, 'r', time, mean_acc.ment.meta2, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MA DEOXY','MA DEOXY+EEG','Location','NorthWest');
+subplot(2,2,3); plot(time, mean_acc.ment.oxy,   'r', time, mean_acc.ment.meta3, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MA OXY','MA OXY+EEG','Location','NorthWest');
+subplot(2,2,4); plot(time, mean_acc.ment.meta1, 'r', time, mean_acc.ment.meta4, 'b');
+xlim([time(1) time(end)]); ylim([0.4 1]); grid on; legend('MA DEOXY+OXY','MA DEOXY+OXY+EEG','Location','NorthWest');
