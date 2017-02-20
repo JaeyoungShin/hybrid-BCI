@@ -25,6 +25,7 @@ cd(WorkingDir)
 cnt_temp = cnt; mrk_temp = mrk; % save data temporarily
 clear cnt mrk;
 
+
 [cnt.imag.deoxy, mrk.imag.deoxy] = proc_appendCnt({cnt_temp.deoxy{1}, cnt_temp.deoxy{3}, cnt_temp.deoxy{5}}, {mrk_temp{1}, mrk_temp{3}, mrk_temp{5}}); % merged motor imagery cnts
 [cnt.imag.oxy, mrk.imag.oxy]     = proc_appendCnt({cnt_temp.oxy{1}, cnt_temp.oxy{3}, cnt_temp.oxy{5}}, {mrk_temp{1}, mrk_temp{3}, mrk_temp{5}}); % merged motor imagery cnts
 [cnt.ment.deoxy, mrk.ment.deoxy] = proc_appendCnt({cnt_temp.deoxy{2}, cnt_temp.deoxy{4}, cnt_temp.deoxy{6}}, {mrk_temp{2}, mrk_temp{4}, mrk_temp{6}}); % merged mental arithmetic cnts
