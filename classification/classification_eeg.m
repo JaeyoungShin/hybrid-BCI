@@ -5,7 +5,7 @@
 % For more tutorials, visit BBCI toolbox (https://github.com/bbci/bbci_public)
 
 % specify your eeg data directory (EegMyDataDir) and temporary directory (TemDir)
-startup_bbci_toolbox('DataDir',EegMyDataDir,'TmpDir','/tmp/');
+startup_bbci_toolbox('DataDir',EegMyDataDir,'TmpDir',TemDir);
 BTB.History = 0; % to aviod error for merging cnt
 
 % parameters
