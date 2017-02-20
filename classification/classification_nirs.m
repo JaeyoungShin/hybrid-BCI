@@ -5,7 +5,7 @@
 % If you want to see more tutorials, visit BBCI toolbox (https://github.com/bbci/bbci_public)
 
 % specify your nirs data directory (NirsMyDataDir), temporary directory (TemDir) and working directory (WorkingDir)
-startup_bbci_toolbox('DataDir',NirsMyDataDir,'TmpDir',TemDir);
+startup_bbci_toolbox('DataDir',NirsMyDataDir,'TmpDir','/tmp/');
 BTB.History = 0; % to aviod error for merging cnt
 
 % parameters
