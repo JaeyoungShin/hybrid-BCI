@@ -29,7 +29,7 @@ The structure holding continuous (i.e., not epoched) EEG signals is denoted by `
 `.yUnit`  |   unit of cnt.x
 `.x`      |   multichannel signals (`DOUBLE [T #channels]`)
 
-## `mrk` - Event markers   <a id="Mrk"></a>
+## `mrk` - Event markers (EEG) <a id="Mrk"></a>
 
 The structure holding marker (or event) information is denoted by `mrk`. Using
 this structure you can segment continuous EEG signals into epochs by the
@@ -42,7 +42,7 @@ function `proc_segmentation`.
 `.y`         | class labels (`DOUBLE [#classes #events]`)
 `.className` | class names (`CELL {1 #classes}`)
 
-## `mnt` - The electrode montage   <a id="Mnt"></a>
+## `mnt` - The electrode montage (EEG) <a id="Mnt"></a>
 
 The electrode montage structure, denoted by `mnt`, holds the information of the
 spatial arrangement of the electrodes on the scalp (for plotting scalp
@@ -50,9 +50,10 @@ topographies) and the arrangement of subplot axes for multi-channel plots.
 
 **`mnt`**       | **is a structure with the following fields:**
 --------------- | ---------------------------------------------
-`.clab`         | channel labels (`CELL {1 #channels}`)
 `.x`            | x-position of the electrode for scalp maps (`DOUBLE [1 +channels]`)
 `.y`            | y-position of the electrode for scalp maps (`DOUBLE [1 +channels]`)
+`.pos_3d`       | 3D coordinate (`DOUBLE [3 #channels]`)
+`.clab`         | channel labels (`CELL {1 #channels}`)
                 | **further optional fields are required for multichannel plots:**
 `.box`          | positions of subplot axes for multichannel plots (`DOUBLE [2 #channels]` or `[2 #channels+1]`; the first row holds the horizontal, and the second row the vertical positions. The optional last column specifies the position of the legend
 `.box_sz`       | size of subplot axes for multichannel plots (`DOUBLE [2 #channels]` or `[2 #nchannels+1]`), corresponding to `.box`. The first row holds the width, the second row the height
