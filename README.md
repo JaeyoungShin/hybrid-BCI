@@ -69,7 +69,7 @@ The structure holding continuous (i.e., not epoched) NIRS signals is denoted by 
 `.fs`         |   sampling rate [samples per second]
 `nSources`    |   the number of sources
 `nDetectors`  |   the number of detectors
-`multiplexing`|   the number of device
+`multiplexing`|   the number of device used for data recording
 `.clab`       |   channel labels (`CELL {1 #channels}`) there may be additional information in other fields, but these are all optional
 `.x`          |   multichannel signals (`DOUBLE [T #channels]`)
 `.wavelengths`|   wavelengths of near-infrared light (`Double [1 #wavelengths]`)
@@ -77,3 +77,10 @@ The structure holding continuous (i.e., not epoched) NIRS signals is denoted by 
 `.title`      |   task type: 'MI' - motor imagery / 'MA' - mental arithmetic
 `.yUnit`      |   unit of cnt.x
 
+## `mrk` - Event markers (NIRS) <a id="Mrk"></a>
+
+The structure holding marker (or event) information is denoted by `mrk`. Using
+this structure you can segment continuous NIRS signals into epochs by the
+function `proc_segmentation`.
+
+The structure is same as above.
