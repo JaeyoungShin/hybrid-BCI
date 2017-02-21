@@ -59,3 +59,21 @@ topographies) and the arrangement of subplot axes for multi-channel plots.
 `.box_sz`       | size of subplot axes for multichannel plots (`DOUBLE [2 #channels]` or `[2 #nchannels+1]`), corresponding to `.box`. The first row holds the width, the second row the height
 `.scale_box`    | position of subplot for the scale (`DOUBLE [2 1]`)
 `.scale_box_sz` | size of subplot for the scale (`DOUBLE [2 1]`)
+
+## `cnt` - Continuous signals (NIRS) <a id="Cnt"></a>
+
+The structure holding continuous (i.e., not epoched) NIRS signals is denoted by `cnt`.
+
+**`cnt`**     | **is a structure with the following fields:**
+-----------   | ---------------------------------------------
+`.fs`         |   sampling rate [samples per second]
+`nSources`    |   the number of sources
+`nDetectors`  |   the number of detectors
+`multiplexing`|   the number of device
+`.clab`       |   channel labels (`CELL {1 #channels}`) there may be additional information in other fields, but these are all optional
+`.x`          |   multichannel signals (`DOUBLE [T #channels]`)
+`.wavelengths`|   wavelengths of near-infrared light (`Double [1 #wavelengths]`)
+`.signal`     |   type of signal
+`.title`      |   task type: 'MI' - motor imagery / 'MA' - mental arithmetic
+`.yUnit`      |   unit of cnt.x
+
