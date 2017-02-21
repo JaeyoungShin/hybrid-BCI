@@ -7,6 +7,7 @@ Shin, Jaeyoung, et al. "Open Access Dataset for EEG+ NIRS Single-Trial Classific
 
 # Basic Data Structures of the BBCI Toolbox 
 This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown and partly modified.
+For more details, visit BBCI toolbox.
 
 
 ## Table of Contents
