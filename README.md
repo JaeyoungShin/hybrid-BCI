@@ -84,3 +84,24 @@ this structure you can segment continuous NIRS signals into epochs by the
 function `proc_segmentation`.
 
 The structure is same as above.
+
+## `mnt` - The electrode montage (NIRS) <a id="Mnt"></a>
+
+The NIRS montage structure, denoted by `mnt`, holds the information of the
+spatial arrangement of sources, detectors, and physiological channels on the scalp (for plotting scalp
+topographies) and the arrangement of subplot axes for multi-channel plots.
+
+**`mnt`**  | **is a structure with the following fields:**
+---------- | ---------------------------------------------
+`.source`  | holds the informaiton of the spatial arrangement of sources and channel labels
+`.detector`| holds the informaiton of the spatial arrangement of sources and channels labels
+`.x`       | x-position of the physiological channel for scalp maps (`DOUBLE [1 +channels]`)
+`.y`       | y-position of the physiological channel for scalp maps (`DOUBLE [1 +channels]`)
+`.pos_3d`  | 3D coordinate (`DOUBLE [3 #channels]`)
+`.clab`    | channel labels (`CELL {1 #channels}`). e.g.) source : AF7, detector : Fp1 -> clab : AF7Fp1
+`sd`       | source - detector pair (`Double [#channels 2]`)             
+           | **further optional fields are required for multichannel plots:**
+`.box`     | positions of subplot axes for multichannel plots (`DOUBLE [2 #channels]` or `[2 #channels+1]`; the first row holds the horizontal, and the second row the vertical positions. The optional last column specifies the position of the legend
+`.box_sz`       | size of subplot axes for multichannel plots (`DOUBLE [2 #channels]` or `[2 #nchannels+1]`), corresponding to `.box`. The first row holds the width, the second row the height
+`.scale_box`    | position of subplot for the scale (`DOUBLE [2 1]`)
+`.scale_box_sz` | size of subplot for the scale (`DOUBLE [2 1]`)
