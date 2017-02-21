@@ -5,13 +5,13 @@ The authors would be grateful if published reports of research using this code (
 
 Shin, Jaeyoung, et al. "Open Access Dataset for EEG+ NIRS Single-Trial Classification." IEEE Transactions on Neural Systems and Rehabilitation Engineering (2016), DOI: 10.1109/TNSRE.2016.2628057.
 
-# Basic Data Structures of the BBCI Toolbox (This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown)
+# Basic Data Structures of the BBCI Toolbox 
+(This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown)
 
 ## Table of Contents
 
 - [`cnt`](#Cnt) - _Data structure holding the continuous signals_
 - [`mrk`](#Mrk) - _Marker structure defining certain events_
-- [`epo`](#Epo) - _Segmented signals (epochs)_
 - [`mnt`](#Mnt) - _Montage structure defining the electrode layout for scalp and grid plots_
 
 ## `cnt` - Continuous signals  <a id="Cnt"></a>
@@ -37,29 +37,6 @@ function `proc_segmentation`.
 `.y`         | class labels (`DOUBLE [#classes #events]`)
 `.className` | class names (`CELL {1 #classes}`)
 `.event`     | structure of further information; each field of `mrk.event` provides information that is specified for each event, given in arrays that index the events _in their first dimension_. This is required such that functions like `mrk_selectEvents` can work properly on those variables.
-
-This structure can optionally have more fields, with are transfered to the `epo`
-structure, when creating epochs. See also the note in the description of the
-`epo` structure and the help of the function `proc_segmentation`.
-
-
-## `epo` - Segmented signals  <a id="Epo"></a>
-
-The structure holding epoched EEG signals (i.e., a series of short-time windows
-of equal length) is denoted by `epo`. (This structure is not resticted to time
-domain signals, although it is suggested by some notions, e.g. the field `.t`).
-
-**`epo`**    | **is a structure with the following fields:**
------------- | ---------------------------------------------
-`.fs`        | sampling rate [samples per second]
-`.x`         | multichannel signals (`DOUBLE [T #channels #epochs]`) where `T` is the number of samples within one epoch
-`.clab`      | channel labels (`CELL {1 #channels}`)
-`.y`         | class labels (`DOUBLE [#classes #epochs]`)
-`.className` | class names (`CELL {1 #classes}`)
-`.t`         | time axis (`DOUBLE [1 T]`)
-`.event`     | structure of further information; each field of `epo.event` provides information that is specified for each event, given in arrays that index the events **in their first dimension**. This is required such that functions like `epo_selectEpochs` can work properly on those variables.
-`.mrk_info`  | structure for other additional information copied from `mrk`
-`.cnt_info`  | structure for additional information copied from `cnt`
 
 ## `mnt` - The electrode montage   <a id="Mnt"></a>
 
