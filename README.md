@@ -16,16 +16,18 @@ For more details, visit BBCI toolbox.
 - [`mrk`](#Mrk) - _Marker structure defining certain events_
 - [`mnt`](#Mnt) - _Montage structure defining the electrode layout for scalp and grid plots_
 
-## `cnt` - Continuous signals  <a id="Cnt"></a>
+## `cnt` - Continuous signals (EEG) <a id="Cnt"></a>
 
 The structure holding continuous (i.e., not epoched) EEG signals is denoted by `cnt`.
 
 **`cnt`** | **is a structure with the following fields:**
 --------- | ---------------------------------------------
-`.fs`     |   sampling rate [samples per second]
-`.x`      |   multichannel signals (`DOUBLE [T #channels]`)
 `.clab`   |   channel labels (`CELL {1 #channels}`) there may be additional information in other fields, but these are all optional
-
+`.fs`     |   sampling rate [samples per second]
+`.title`  |   task type: 'MI' - motor imagery / 'MA' - mental arithmetic
+`.T`      |   length of cnt.x
+`.yUnit`  |   unit of cnt.x
+`.x`      |   multichannel signals (`DOUBLE [T #channels]`)
 
 ## `mrk` - Event markers   <a id="Mrk"></a>
 
@@ -36,9 +38,9 @@ function `proc_segmentation`.
 **`mrk`**    | **is a structure with the following fields:**
 ------------ | ---------------------------------------------
 `.time`      | defines the time points of events in msec (`DOUBLE [1 #events]`)
+`.event.desc`| structure of further information; each field of `mrk.event` provides information that is specified for each event, given in arrays that index the events _in their first dimension_. This is required such that functions like `mrk_selectEvents` can work properly on those variables.
 `.y`         | class labels (`DOUBLE [#classes #events]`)
 `.className` | class names (`CELL {1 #classes}`)
-`.event`     | structure of further information; each field of `mrk.event` provides information that is specified for each event, given in arrays that index the events _in their first dimension_. This is required such that functions like `mrk_selectEvents` can work properly on those variables.
 
 ## `mnt` - The electrode montage   <a id="Mnt"></a>
 
