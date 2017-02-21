@@ -6,7 +6,8 @@ The authors would be grateful if published reports of research using this code (
 Shin, Jaeyoung, et al. "Open Access Dataset for EEG+ NIRS Single-Trial Classification." IEEE Transactions on Neural Systems and Rehabilitation Engineering (2016), DOI: 10.1109/TNSRE.2016.2628057.
 
 # Basic Data Structures of the BBCI Toolbox 
-(This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown)
+This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown and partly modified.
+
 
 ## Table of Contents
 
