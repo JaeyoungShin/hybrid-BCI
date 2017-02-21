@@ -1,4 +1,4 @@
-# hybrid-BCI
+# Hybrid-BCI
 Tutorial for data processing for hybrid BCI
 
 The authors would be grateful if published reports of research using this code (or a modified version, maintaining a significant portion of the original code) would cite the following article:
