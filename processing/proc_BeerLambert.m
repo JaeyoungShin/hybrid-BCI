@@ -32,7 +32,7 @@ function dat = proc_BeerLambert(dat, varargin)
 % See also: nirs_* nirsfile_* GetExtinctions
 % 
 % Note: Based on the nirX Nilab toolbox functions u_LBG and u_popLBG.
-
+%
 % matthias.treder@tu-berlin.de 2011, mail@aewald.net 2013
 % AE: changed channels label from wl1&wl2 to oxa and deoxy.
 % Markus Wenzel 2013 (adapted it to the new toolbox)
@@ -41,7 +41,7 @@ function dat = proc_BeerLambert(dat, varargin)
 
 
 props={'Citation'   1             'INT'
-        'Opdist'    2.5           'DOUBLE'
+        'Opdist'    3             'DOUBLE'
         'Ival'      'all'         'CHAR|DOUBLE'
         'DPF'       [5.98 7.15]   'DOUBLE'
         'Epsilon'   []            'DOUBLE'
