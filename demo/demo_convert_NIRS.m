@@ -26,7 +26,7 @@ stimDef.eeg = {1,2; 'condition1','condition2'};
 % load NIRS data
 loadDir = fullfile(NirsMyDataDir, subdir_list{1});
 cd(loadDir);
-load cnt; load mrk; % load continous eeg signal (cnt), marker (mrk) and montage (mnt)
+load cnt; load mrk; % load continous eeg signal (cnt), marker (mrk)
 cd(WorkingDir)
 
 % MBLL and save post-MBLL data
