@@ -12,6 +12,7 @@ We also recommend you to download an old version of BBCI toolbox in the followin
 
 https://github.com/JaeyoungShin/hybrid-BCI/blob/master/bbci_public-master_TNSRE.zip
 
+This zip file includes the updated version of 'proc_BeerLambert'.
 You may run into some errors if you use later version of BBCI toolbox or MATLAB.
 
 # Basic Data Structures
