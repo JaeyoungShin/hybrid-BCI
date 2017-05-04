@@ -9,9 +9,10 @@ Shin, Jaeyoung, et al. "Open Access Dataset for EEG+ NIRS Single-Trial Classific
 Data processing was performed using MATLAB 2013b.
 Please use MATLAB 2013b or older version. 
 We also recommend you to download an old version of BBCI toolbox in the following link:
+
 https://github.com/JaeyoungShin/hybrid-BCI/blob/master/bbci_public-master_TNSRE.zip
 
-Or, you may run into some errors if you use later version of BBCI toolbox or MATLAB.
+You may run into some errors if you use later version of BBCI toolbox or MATLAB.
 
 # Basic Data Structures
 This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown and partly modified.
