@@ -32,7 +32,7 @@ cd(WorkingDir)
 % MBLL and save post-MBLL data
 for idx = 1 : 6
     filename{idx} = fullfile(subdir_list{1}, ['session',num2str(idx)]);
-    cntHb{idx} = proc_BeerLambert(cnt{idx}, 'Opdist', 30, 'DPF', [5.98 7.15], 'Citation', 1);
+    cntHb{idx} = proc_BeerLambert(cnt{idx}, 'Opdist', 3, 'DPF', [5.98 7.15], 'Citation', 1);
     file_saveNIRSMatlab(filename{idx}, cntHb{idx}, mrk{idx}, mnt);
 end
 
