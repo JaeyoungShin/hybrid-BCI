@@ -5,6 +5,14 @@ The authors would be grateful if published reports of research using this code (
 
 Shin, Jaeyoung, et al. "Open Access Dataset for EEG+ NIRS Single-Trial Classification." IEEE Transactions on Neural Systems and Rehabilitation Engineering (2016), DOI: 10.1109/TNSRE.2016.2628057.
 
+# Caution
+Data processing was performed using MATLAB 2013b.
+Please use MATLAB 2013b or older version. 
+We also recommend you to download an old version of BBCI toolbox in the following link:
+hybrid-BCI/bbci_public-master_TNSRE.zip
+
+Or, you may run into some errors if you use later version of BBCI toolbox or MATLAB.
+
 # Basic Data Structures
 This document is from https://github.com/bbci/bbci_public/blob/master/doc/ToolboxData.markdown and partly modified.
 For more details, visit BBCI toolbox.
