@@ -51,10 +51,10 @@ cnt_org.imag.oxy   = cnt.imag.oxy; % backup
 cnt_org.ment.deoxy = cnt.ment.deoxy; % backup
 cnt_org.ment.oxy   = cnt.ment.oxy; % backup
 
-cnt.imag.deoxy = proc_selectChannels(cnt.imag.deoxy, [MotorChannel,ParientalChannel]);
-cnt.imag.oxy   = proc_selectChannels(cnt.imag.oxy, [MotorChannel,ParientalChannel]);
-cnt.ment.deoxy = proc_selectChannels(cnt.ment.deoxy, [MotorChannel,ParientalChannel]);
-cnt.ment.oxy   = proc_selectChannels(cnt.ment.oxy, [MotorChannel,ParientalChannel]);
+cnt.imag.deoxy = proc_selectChannels(cnt.imag.deoxy, MotorChannel);
+cnt.imag.oxy   = proc_selectChannels(cnt.imag.oxy, MotorChannel);
+cnt.ment.deoxy = proc_selectChannels(cnt.ment.deoxy, MotorChannel);
+cnt.ment.oxy   = proc_selectChannels(cnt.ment.oxy, MotorChannel);
 
 % segmentation (epoching)
 ival_epo  = [-10 25]*1000; % epoch range (unit: msec)
